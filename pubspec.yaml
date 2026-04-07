@@ -1,5 +1,6 @@
-name: flutter_async_demo
-description: A Flutter async demo project
+name: flutter_data_demo
+description: Demo các cách truyền dữ liệu giữa Widget trong Flutter
+
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.6
+  provider: ^6.1.1
 
 dev_dependencies:
   flutter_test:
