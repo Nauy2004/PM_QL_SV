@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/database_helper.dart';
+import '../services/firebase_service.dart';
 import '../models/health_record.dart';
 
 class InputScreen extends StatefulWidget {
@@ -12,9 +12,11 @@ class InputScreen extends StatefulWidget {
 class _InputScreenState extends State<InputScreen> {
   final _heightController = TextEditingController();
   final _weightController = TextEditingController();
+  final FirebaseService _firebaseService = FirebaseService();
   double _bmi = 0;
   String _category = '';
   Color _categoryColor = Colors.grey;
+  bool _isSaving = false;
 
   void _calculateBMI() {
     final double height = double.tryParse(_heightController.text) ?? 0;
@@ -47,23 +49,37 @@ class _InputScreenState extends State<InputScreen> {
 
   Future<void> _saveRecord() async {
     if (_bmi > 0) {
-      final record = HealthRecord(
-        weight: double.parse(_weightController.text),
-        height: double.parse(_heightController.text),
-        bmi: _bmi,
-        category: _category,
-        createdAt: DateTime.now(),
-      );
-
-      await DatabaseHelper.instance.insertRecord(record);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đã lưu chỉ số vào cơ sở dữ liệu!'),
-            backgroundColor: Color(0xFF2C7A7B),
-          ),
+      setState(() => _isSaving = true);
+      try {
+        final record = HealthRecord(
+          weight: double.parse(_weightController.text),
+          height: double.parse(_heightController.text),
+          bmi: _bmi,
+          category: _category,
+          createdAt: DateTime.now(),
         );
+
+        await _firebaseService.addRecord(record);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Đã lưu lên Cloud thành công!'),
+              backgroundColor: Color(0xFF2C7A7B),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Lỗi: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        setState(() => _isSaving = false);
       }
     }
   }
@@ -72,7 +88,7 @@ class _InputScreenState extends State<InputScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cập nhật chỉ số'),
+        title: const Text('Cập nhật chỉ số Cloud'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
@@ -83,72 +99,37 @@ class _InputScreenState extends State<InputScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 20),
-            // Date picker
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Ngày:'),
-                  TextButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.calendar_today),
-                    label: Text(
-                      DateTime.now().toString().split(' ')[0],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Height input
             TextField(
               controller: _heightController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Chiều cao (cm)',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.height),
               ),
             ),
             const SizedBox(height: 16),
-            // Weight input
             TextField(
               controller: _weightController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Cân nặng (kg)',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 prefixIcon: const Icon(Icons.monitor_weight),
               ),
             ),
             const SizedBox(height: 24),
-            // Calculate button
             ElevatedButton(
               onPressed: _calculateBMI,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2C7A7B),
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
               ),
-              child: const Text(
-                'Tính BMI',
-                style: TextStyle(fontSize: 16, color: Colors.white),
-              ),
+              child: const Text('Tính BMI', style: TextStyle(fontSize: 16, color: Colors.white)),
             ),
             const SizedBox(height: 24),
-            // Result card
-            if (_bmi > 0)
+            if (_bmi > 0) ...[
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -157,58 +138,42 @@ class _InputScreenState extends State<InputScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Text(
-                      'Kết quả BMI',
-                      style: TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
+                    const Text('Kết quả BMI', style: TextStyle(fontSize: 14, color: Colors.grey)),
                     const SizedBox(height: 8),
                     Text(
                       _bmi.toStringAsFixed(1),
-                      style: const TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
                         color: _categoryColor,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         _category,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
                 ),
               ),
-            const SizedBox(height: 24),
-            // Save button
-            if (_bmi > 0)
-              ElevatedButton(
-                onPressed: _saveRecord,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF2C7A7B),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    side: const BorderSide(color: Color(0xFF2C7A7B)),
+              const SizedBox(height: 24),
+              _isSaving 
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton.icon(
+                    onPressed: _saveRecord,
+                    icon: const Icon(Icons.cloud_upload),
+                    label: const Text('Lưu lên Firebase'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  '💾 Lưu chỉ số',
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
+            ]
           ],
         ),
       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/database_helper.dart';
+import '../services/firebase_service.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,78 +10,62 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final FirebaseService _firebaseService = FirebaseService();
   bool _isLogin = true;
+  bool _isLoading = false;
 
   Future<void> _submit() async {
-    final user = _usernameController.text.trim();
+    final email = _emailController.text.trim();
     final pass = _passwordController.text.trim();
 
-    if (user.isEmpty || pass.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin')),
-      );
+    if (email.isEmpty || pass.isEmpty) {
+      _showError('Vui lòng nhập đầy đủ email và mật khẩu');
       return;
     }
 
-    if (_isLogin) {
-      final success = await DatabaseHelper.instance.login(user, pass);
-      if (success != null) {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
-        }
+    setState(() => _isLoading = true);
+
+    try {
+      if (_isLogin) {
+        await _firebaseService.signIn(email, pass);
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Sai tài khoản hoặc mật khẩu')),
-          );
-        }
+        await _firebaseService.signUp(email, pass);
       }
-    } else {
-      try {
-        await DatabaseHelper.instance.register(user, pass, 'Người dùng mới');
-        setState(() => _isLogin = true);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đăng ký thành công! Hãy đăng nhập')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tên tài khoản đã tồn tại')),
-          );
-        }
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
       }
+    } catch (e) {
+      _showError('Lỗi: ${e.toString()}');
+    } finally {
+      setState(() => _isLoading = false);
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(30),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.health_and_safety, size: 80, color: Color(0xFF2C7A7B)),
-              const SizedBox(height: 20),
-              Text(
-                _isLogin ? 'Đăng Nhập' : 'Đăng Ký',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
+              const Icon(Icons.cloud_done, size: 80, color: Color(0xFF2C7A7B)),
+              const SizedBox(height: 10),
+              const Text('Health Tracker Cloud', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 30),
               TextField(
-                controller: _usernameController,
+                controller: _emailController,
                 decoration: InputDecoration(
-                  labelText: 'Tên đăng nhập',
+                  labelText: 'Email',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.person),
                 ),
               ),
               const SizedBox(height: 16),
@@ -91,23 +75,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: InputDecoration(
                   labelText: 'Mật khẩu',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.lock),
                 ),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2C7A7B),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 55),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              if (_isLoading)
+                const CircularProgressIndicator()
+              else
+                ElevatedButton(
+                  onPressed: _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2C7A7B),
+                    minimumSize: const Size(double.infinity, 55),
+                  ),
+                  child: Text(_isLogin ? 'Đăng Nhập' : 'Đăng Ký'),
                 ),
-                child: Text(_isLogin ? 'Đăng Nhập' : 'Đăng Ký'),
-              ),
               TextButton(
                 onPressed: () => setState(() => _isLogin = !_isLogin),
-                child: Text(_isLogin ? 'Chưa có tài khoản? Đăng ký ngay' : 'Đã có tài khoản? Đăng nhập'),
+                child: Text(_isLogin ? 'Chưa có tài khoản? Đăng ký' : 'Đã có tài khoản? Đăng nhập'),
               ),
             ],
           ),

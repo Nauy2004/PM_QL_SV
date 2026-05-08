@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/database_helper.dart';
+import '../services/firebase_service.dart';
 import '../models/health_record.dart';
 
 class ExerciseScreen extends StatefulWidget {
@@ -10,21 +10,22 @@ class ExerciseScreen extends StatefulWidget {
 }
 
 class _ExerciseScreenState extends State<ExerciseScreen> {
+  final FirebaseService _firebaseService = FirebaseService();
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<void>(
-      stream: DatabaseHelper.instance.onDbUpdate,
+    return StreamBuilder<List<HealthRecord>>(
+      stream: _firebaseService.getRecordsStream(),
       builder: (context, snapshot) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Gợi ý tập luyện'),
+            title: const Text('Gợi ý tập luyện Cloud'),
             backgroundColor: Colors.white,
             foregroundColor: Colors.black,
             elevation: 0,
           ),
-          body: FutureBuilder<List<HealthRecord>>(
-            future: DatabaseHelper.instance.getAllRecords(),
-            builder: (context, snapshot) {
+          body: Builder(
+            builder: (context) {
               final records = snapshot.data ?? [];
               final category = records.isNotEmpty ? records.last.category : 'Bình thường';
 
@@ -87,19 +88,16 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
       return [
         {'title': 'Nâng tạ nhẹ', 'time': '20 phút', 'level': 'Dễ', 'desc': 'Giúp kích thích cơ bắp phát triển.'},
         {'title': 'Chống đẩy', 'time': '15 phút', 'level': 'Vừa', 'desc': 'Tăng cường sức mạnh thân trên.'},
-        {'title': 'Yoga tăng cân', 'time': '30 phút', 'level': 'Dễ', 'desc': 'Cân bằng trao đổi chất.'},
       ];
     } else if (category.contains('Thừa cân') || category.contains('Béo phì')) {
       return [
         {'title': 'Chạy bộ nhẹ', 'time': '40 phút', 'level': 'Vừa', 'desc': 'Đốt cháy calo hiệu quả.'},
         {'title': 'Nhảy dây', 'time': '15 phút', 'level': 'Khó', 'desc': 'Tiêu hao mỡ thừa cực nhanh.'},
-        {'title': 'Đạp xe', 'time': '30 phút', 'level': 'Vừa', 'desc': 'Tăng sức bền hệ tim mạch.'},
       ];
     } else {
       return [
         {'title': 'Chạy bộ', 'time': '30 phút', 'level': 'Vừa', 'desc': 'Duy trì vóc dáng cân đối.'},
         {'title': 'Plank', 'time': '5 phút', 'level': 'Vừa', 'desc': 'Giúp cơ bụng săn chắc.'},
-        {'title': 'Bơi lội', 'time': '45 phút', 'level': 'Khó', 'desc': 'Phát triển toàn diện cơ thể.'},
       ];
     }
   }
@@ -112,11 +110,7 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.play_circle_fill, color: Colors.blue),
-            ),
+            const Icon(Icons.play_circle_fill, color: Colors.blue, size: 40),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -124,8 +118,6 @@ class _ExerciseScreenState extends State<ExerciseScreen> {
                 children: [
                   Text(ex['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   Text('${ex['time']} • Mức độ: ${ex['level']}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text(ex['desc']!, style: const TextStyle(fontSize: 13)),
                 ],
               ),
             ),
