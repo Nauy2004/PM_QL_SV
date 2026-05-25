@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1010964868536",
+    "project_id": "manage-bmi",
+    "storage_bucket": "manage-bmi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1010964868536:android:4af7b902b4da553789b34d",
+        "android_client_info": {
+          "package_name": "com.example.giaodien"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGCyBZ3Y3jDBPcSPUECSeTXNTgwJ3Mjws"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
